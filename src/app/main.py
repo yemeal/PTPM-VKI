@@ -1,12 +1,10 @@
-import logging
-
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
-from app.logging import setup_logging
-from app.middleware import request_logging_middleware
-from app.schemas import UserLogin
+from src.app.logging import setup_logging
+from src.app.middleware import request_logging_middleware
+from src.app.schemas import UserLogin
 
 setup_logging()
 

@@ -6,7 +6,7 @@ from fastapi import Request
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from app.masking import mask_sensitive
+from src.app.masking import mask_sensitive
 
 logger = logging.getLogger("http")
 
@@ -17,9 +17,7 @@ async def get_request_parameters(
     parameters: dict[str, Any] = {}
 
     if request.query_params:
-        parameters["query"] = mask_sensitive(
-            dict(request.query_params)
-        )
+        parameters["query"] = mask_sensitive(dict(request.query_params))
 
     body = await request.body()
 
@@ -27,7 +25,7 @@ async def get_request_parameters(
         try:
             data = json.loads(body)
             parameters["body"] = mask_sensitive(data)
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except json.JSONDecodeError, UnicodeDecodeError:
             parameters["body"] = "<invalid json>"
 
     return parameters
@@ -52,8 +50,7 @@ async def request_logging_middleware(
 
     if response.status_code < 400:
         logger.info(
-            "Request successful | method=%s | path=%s | "
-            "parameters=%s | result=True",
+            "Request successful | method=%s | path=%s | parameters=%s | result=True",
             request.method,
             request.url.path,
             parameters,
@@ -66,8 +63,7 @@ async def request_logging_middleware(
         )
 
         logger.warning(
-            "Request failed | method=%s | path=%s | "
-            "parameters=%s | result=False | error=%s",
+            "Request failed | method=%s | path=%s | parameters=%s | result=False | error=%s",
             request.method,
             request.url.path,
             parameters,
