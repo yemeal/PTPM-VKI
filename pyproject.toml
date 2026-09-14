@@ -58,4 +58,4 @@ addopts = ["-ra", "--strict-config", "--strict-markers"]
 [tool.ty]
 
 [tool.ty.environment]
-root = ["./src"]
+root = ["./src", "."]
