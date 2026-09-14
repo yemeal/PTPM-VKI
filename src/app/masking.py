@@ -7,6 +7,7 @@ SECRET = b"secret-key"
 SENSITIVE_FIELDS = {
     "password",
     "confirm_password",
+    "confirmPassword",
 }
 
 
