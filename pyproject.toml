@@ -13,6 +13,10 @@ dependencies = [
     "uvicorn[standard] (>=0.53.0,<0.54.0)",
 ]
 
+[tool.poetry]
+packages = [
+    { include = "app", from = "src" }
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -52,3 +56,6 @@ asyncio_mode = "auto"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 
 [tool.ty]
+
+[tool.ty.environment]
+root = ["./src"]

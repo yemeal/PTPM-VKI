@@ -6,7 +6,7 @@ from fastapi import Request
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from src.app.masking import mask_sensitive
+from app.masking import mask_sensitive
 
 logger = logging.getLogger("http")
 

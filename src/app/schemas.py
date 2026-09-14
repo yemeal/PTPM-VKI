@@ -8,22 +8,34 @@ from pydantic_core import PydanticCustomError
 LOGIN_BLACKLIST: set[str] = {"admin", "moderator", "hacker"}
 
 # Логин
-EMAIL_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
-PHONE_PATTERN: re.Pattern[str] = re.compile(r"^\+[0-9]-[0-9]{3}-[0-9]{3}-[0-9]{4}$")
+EMAIL_PATTERN: re.Pattern[str] = re.compile(
+    r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+)
+PHONE_PATTERN: re.Pattern[str] = re.compile(
+    r"^\+[0-9]-[0-9]{3}-[0-9]{3}-[0-9]{4}$"
+)
 SIMPLE_LOGIN_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9_]+$")
 
 # Пароль
 LOWERCASE_PATTERN: re.Pattern[str] = re.compile(r"[а-яё]")
 UPPERCASE_PATTERN: re.Pattern[str] = re.compile(r"[А-ЯЁ]")
 DIGIT_PATTERN: re.Pattern[str] = re.compile(r"[0-9]")
-SPECIAL_PATTERN: re.Pattern[str] = re.compile(r"[!@#$%^&*()_+\-=\[\]{};:'\",.<>/?\\|`~]")
+SPECIAL_PATTERN: re.Pattern[str] = re.compile(
+    r"[!@#$%^&*()_+\-=\[\]{};:'\",.<>/?\\|`~]"
+)
 PASSWORD_PATTERN: re.Pattern[str] = re.compile(
     r"^[А-Яа-яЁё0-9!@#$%^&*()_+\-=\[\]{};:'\",.<>/?\\|`~]+$"
 )
 
 
 class UserLogin(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, frozen=True, extra="forbid")
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        frozen=True,
+        extra="forbid",
+        validate_by_name=True,
+        validate_by_alias=True,
+    )
 
     login: str
     password: str

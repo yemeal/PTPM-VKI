@@ -2,9 +2,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
-from src.app.logging import setup_logging
-from src.app.middleware import request_logging_middleware
-from src.app.schemas import UserLogin
+from app.logging import setup_logging
+from app.middleware import request_logging_middleware
+from app.schemas import UserLogin
 
 setup_logging()
 
@@ -29,7 +29,9 @@ async def validation_error_handler(
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse("/docs", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(
+        "/docs", status_code=status.HTTP_308_PERMANENT_REDIRECT
+    )
 
 
 @app.post("/v1/auth/login", status_code=status.HTTP_200_OK)
