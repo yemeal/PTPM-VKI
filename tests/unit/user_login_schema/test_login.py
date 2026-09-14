@@ -114,6 +114,9 @@ def test_login_too_short(login: str, valid_password: str) -> None:
     [
         "user-test",
         "user!test",
+        "пользователь",
+        "пользователь1",
+        "пользователь1!",
     ],
 )
 def test_login_invalid_characters(login: str, valid_password: str) -> None:

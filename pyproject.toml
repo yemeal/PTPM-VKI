@@ -54,6 +54,10 @@ testpaths = ["tests"]
 pythonpath = ["src", "."]
 asyncio_mode = "auto"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
+filterwarnings = [
+    # Игнорировать устаревший алиас AnyIO именно в Starlette TestClient:
+    "ignore:The anyio\\.abc\\.BlockingPortal alias is deprecated:DeprecationWarning:starlette\\.testclient",
+]
 
 [tool.ty]
 
