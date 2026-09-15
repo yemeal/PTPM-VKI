@@ -8,8 +8,11 @@ from app.schemas import UserRegister
     "login",
     [
         "example@example.com",
+        "   example@example.com   ",
         "+7-999-123-4567",
+        "   +7-999-123-4567   ",
         "user_123",
+        "  user_123  ",
         "abc_1",
     ],
 )
@@ -21,7 +24,7 @@ def test_valid_login(login: str, valid_password: str) -> None:
     )
 
     assert user_login.model_dump() == {
-        "login": login,
+        "login": login.strip(),
         "password": valid_password,
         "confirm_password": valid_password,
     }
@@ -43,6 +46,10 @@ def test_login_empty(valid_password: str) -> None:
         "ADMIN",  # регистронезависимый
         "moderator",
         "hacker",
+        " admin",
+        " ADMIN",
+        "admin ",
+        "ADMIN ",
     ],
 )
 def test_login_blacklisted(login: str, valid_password: str) -> None:
