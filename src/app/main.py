@@ -4,7 +4,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.logging import setup_logging
 from app.middleware import request_logging_middleware
-from app.schemas import UserLogin
+from app.schemas import UserRegister
 
 setup_logging()
 
@@ -34,6 +34,6 @@ async def root():
     )
 
 
-@app.post("/v1/auth/login", status_code=status.HTTP_200_OK)
-async def login(data: UserLogin) -> PlainTextResponse:
+@app.post("/v1/auth/register", status_code=status.HTTP_200_OK)
+async def register(data: UserRegister) -> PlainTextResponse:
     return PlainTextResponse(content="OK")

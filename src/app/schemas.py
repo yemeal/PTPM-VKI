@@ -28,7 +28,7 @@ PASSWORD_PATTERN: re.Pattern[str] = re.compile(
 )
 
 
-class UserLogin(BaseModel):
+class UserRegister(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
         frozen=True,
