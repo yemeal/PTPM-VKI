@@ -12,44 +12,44 @@ def test_root_redirect(test_client: TestClient) -> None:
     assert response.headers["location"] == "/docs"
 
 
-def test_login_success(
+def test_register_success(
     test_client: TestClient,
     valid_payload: dict[str, str],
 ) -> None:
-    response = test_client.post("/v1/auth/login", json=valid_payload)
+    response = test_client.post("/v1/auth/register", json=valid_payload)
 
     assert response.status_code == status.HTTP_200_OK
     assert response.text == "OK"
 
 
-def test_login_invalid_data(
+def test_register_invalid_data(
     test_client: TestClient,
     valid_payload: dict[str, str],
 ) -> None:
     payload = {**valid_payload, "login": "admin"}
-    response = test_client.post("/v1/auth/login", json=payload)
+    response = test_client.post("/v1/auth/register", json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.text == "Логин запрещен"
 
 
-def test_login_password_mismatch(
+def test_register_password_mismatch(
     test_client: TestClient,
     valid_payload: dict[str, str],
 ) -> None:
     payload = {**valid_payload, "confirmPassword": "Другой1!"}
-    response = test_client.post("/v1/auth/login", json=payload)
+    response = test_client.post("/v1/auth/register", json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert response.text == "Пароль и подтверждение пароля не совпадают"
 
 
-def test_login_extra_fields_forbidden(
+def test_register_extra_fields_forbidden(
     test_client: TestClient,
     valid_payload: dict[str, str],
 ) -> None:
     payload = {**valid_payload, "extra": "field"}
-    response = test_client.post("/v1/auth/login", json=payload)
+    response = test_client.post("/v1/auth/register", json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
@@ -61,7 +61,7 @@ def test_api_logging_masks_password(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.INFO):
-        test_client.post("/v1/auth/login", json=valid_payload)
+        test_client.post("/v1/auth/register", json=valid_payload)
 
     assert any(
         "Request successful" in record.message

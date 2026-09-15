@@ -6,8 +6,8 @@
 
 ### 1. Проект лабораторной работы №1 (валидация пользователя и API)
 
-- `tests/unit/user_login_schema/test_login.py`: 23 теста
-- `tests/unit/user_login_schema/test_password.py`: 11 тестов
+- `tests/unit/user_register_schema/test_login.py`: 23 теста
+- `tests/unit/user_register_schema/test_password.py`: 11 тестов
 - `tests/unit/api/test_api.py`: 6 тестов
 - **Итого:** 40 тестов.
 - **Статистика:** 40 пройдено (100%), 0 упало.

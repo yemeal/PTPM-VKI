@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas import UserLogin
+from app.schemas import UserRegister
 
 
 @pytest.fixture
@@ -14,11 +14,11 @@ def valid_password() -> str:
 
 
 @pytest.fixture
-def valid_user_login_schema(
+def valid_user_register_schema(
     valid_login: str,
     valid_password: str,
-) -> UserLogin:
-    return UserLogin(
+) -> UserRegister:
+    return UserRegister(
         login=valid_login,
         password=valid_password,
         confirm_password=valid_password,

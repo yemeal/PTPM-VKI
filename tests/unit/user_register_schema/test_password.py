@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import UserLogin
+from app.schemas import UserRegister
 
 
 @pytest.mark.parametrize(
@@ -16,7 +16,7 @@ def test_password_too_short(password: str, valid_login: str) -> None:
     with pytest.raises(
         ValidationError, match="Пароль должен содержать минимум 7 символов"
     ):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password=password,
             confirm_password=password,
@@ -38,7 +38,7 @@ def test_password_invalid_characters(
         ValidationError,
         match="Пароль может содержать только кириллицу, цифры и спецсимволы",
     ):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password=password,
             confirm_password=password,
@@ -47,7 +47,7 @@ def test_password_invalid_characters(
 
 def test_password_no_lowercase(valid_login: str) -> None:
     with pytest.raises(ValidationError, match="минимум одну строчную букву"):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password="ПАРОЛЬ1!",
             confirm_password="ПАРОЛЬ1!",
@@ -56,7 +56,7 @@ def test_password_no_lowercase(valid_login: str) -> None:
 
 def test_password_no_uppercase(valid_login: str) -> None:
     with pytest.raises(ValidationError, match="минимум одну заглавную букву"):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password="пароль1!",
             confirm_password="пароль1!",
@@ -65,7 +65,7 @@ def test_password_no_uppercase(valid_login: str) -> None:
 
 def test_password_no_digit(valid_login: str) -> None:
     with pytest.raises(ValidationError, match="минимум одну цифру"):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password="Пароль!",
             confirm_password="Пароль!",
@@ -74,7 +74,7 @@ def test_password_no_digit(valid_login: str) -> None:
 
 def test_password_no_special(valid_login: str) -> None:
     with pytest.raises(ValidationError, match="минимум один спецсимвол"):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password="Пароль1",
             confirm_password="Пароль1",
@@ -86,7 +86,7 @@ def test_password_mismatch(valid_login: str, valid_password: str) -> None:
         ValidationError,
         match="Пароль и подтверждение пароля не совпадают",
     ):
-        UserLogin(
+        UserRegister(
             login=valid_login,
             password=valid_password,
             confirm_password="Другой1!",
@@ -96,7 +96,7 @@ def test_password_mismatch(valid_login: str, valid_password: str) -> None:
 def test_password_min_length(valid_login: str) -> None:
     password = "Парол1!"  # ровно 7 символов
 
-    user_login = UserLogin(
+    user_login = UserRegister(
         login=valid_login,
         password=password,
         confirm_password=password,
