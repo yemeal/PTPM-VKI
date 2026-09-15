@@ -44,13 +44,14 @@ class UserRegister(BaseModel):
     @field_validator("login")
     @classmethod
     def validate_login(cls, value: str) -> str:
+        value = value.strip()
         if not value:
             raise PydanticCustomError(
                 "login_empty",
                 "Логин не может быть пустым",
             )
 
-        if value.lower() in LOGIN_BLACKLIST:
+        if value.casefold() in LOGIN_BLACKLIST:
             raise PydanticCustomError(
                 "login_blacklisted",
                 "Логин запрещен",
