@@ -26,7 +26,3 @@ class UserRegisterRequest(BaseModel):
         if self.password != self.confirm_password:
             raise PasswordMismatchError()
         return self
-
-
-# Алиас для обратной совместимости
-UserRegister = UserRegisterRequest

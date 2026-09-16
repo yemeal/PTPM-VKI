@@ -1,7 +1,9 @@
-from app.infrastructure.notifiers import EmailNotifier
+from app.infrastructure.event_bus import InMemoryEventBus
+from app.infrastructure.notifiers import EmailNotificationService
 from app.infrastructure.repositories import SqliteUserRepository
 
 __all__ = [
-    "EmailNotifier",
+    "EmailNotificationService",
+    "InMemoryEventBus",
     "SqliteUserRepository",
 ]

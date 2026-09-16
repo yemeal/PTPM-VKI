@@ -1,6 +1,0 @@
-from app.entrypoints.http.schemas import UserRegister, UserRegisterRequest
-
-__all__ = [
-    "UserRegister",
-    "UserRegisterRequest",
-]

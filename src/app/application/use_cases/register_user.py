@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
-from app.application.ports.notifier import IExternalNotifier
+from app.application.ports.event_bus import IEventPublisher
 from app.application.ports.repository import IUserRepository
+from app.domain.events import UserRegisteredEvent
 from app.domain.exceptions import LoginAlreadyTakenError
 from app.domain.user import User
 
@@ -20,21 +21,23 @@ class RegisterUserUseCase:
     def __init__(
         self,
         user_repo: IUserRepository,
-        notifier: IExternalNotifier,
+        event_publisher: IEventPublisher,
     ) -> None:
         self._user_repo = user_repo
-        self._notifier = notifier
+        self._event_publisher = event_publisher
 
-    def execute(self, command: RegisterUserCommand) -> User:
+    async def execute(self, command: RegisterUserCommand) -> User:
         """Выполнить сценарий регистрации пользователя"""
-
-        existing_user = self._user_repo.get_by_login(command.login)
+        existing_user = await self._user_repo.get_by_login(command.login)
         if existing_user is not None:
             raise LoginAlreadyTakenError(f"Логин '{command.login}' уже занят")
 
         user = User(login=command.login, password=command.password)
-        self._user_repo.add(user)
 
-        self._notifier.notify(f"User '{user.login}' successfully registered")
+        # Здесь ваще по факту должен быть аутбокс и юнит оф ворк, но для этой лабы это оверинжиниринг
+        await self._user_repo.add(user)
+        await self._event_publisher.publish(
+            UserRegisteredEvent(login=user.login)
+        )
 
         return user

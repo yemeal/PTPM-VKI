@@ -1,3 +1,4 @@
+from app.domain.events import DomainEvent, UserRegisteredEvent
 from app.domain.exceptions import (
     BlacklistedLoginError,
     DomainError,
@@ -23,6 +24,7 @@ from app.domain.user import User
 __all__ = [
     "BlacklistedLoginError",
     "DomainError",
+    "DomainEvent",
     "DomainValidationError",
     "EmptyLoginError",
     "InvalidEmailFormatError",
@@ -40,4 +42,5 @@ __all__ = [
     "PasswordNoUppercaseError",
     "PasswordTooShortError",
     "User",
+    "UserRegisteredEvent",
 ]

@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 
-class IExternalNotifier(ABC):
-    """Интерфейс сервиса уведомлений (сторонней зависимости)."""
+class INotificationService(ABC):
+    """Интерфейс сервиса уведомлений"""
 
     @abstractmethod
-    def notify(self, message: str) -> None:
-        """Отправить сообщение во внешнюю систему."""
+    async def notify(self, message: str) -> None:
+        """Асинхронно отправить сообщение во внешнюю систему"""

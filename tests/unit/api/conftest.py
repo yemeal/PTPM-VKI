@@ -2,10 +2,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.entrypoints.http.dependencies import get_user_repository
+from app.entrypoints.http.main import app
 from app.infrastructure.repositories.sqlite_user_repo import (
     SqliteUserRepository,
 )
-from app.main import app
 
 
 @pytest.fixture(autouse=True)

@@ -1,3 +1,5 @@
-from app.infrastructure.notifiers.email_notifier import EmailNotifier
+from app.infrastructure.notifiers.email_notifier import (
+    EmailNotificationService,
+)
 
-__all__ = ["EmailNotifier"]
+__all__ = ["EmailNotificationService"]

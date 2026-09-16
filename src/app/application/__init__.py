@@ -1,9 +1,20 @@
-from app.application.ports import IExternalNotifier, IUserRepository
+from app.application.event_handlers import (
+    UserRegisteredNotificationHandler,
+)
+from app.application.ports import (
+    IEventHandler,
+    IEventPublisher,
+    INotificationService,
+    IUserRepository,
+)
 from app.application.use_cases import RegisterUserCommand, RegisterUserUseCase
 
 __all__ = [
-    "IExternalNotifier",
+    "IEventHandler",
+    "IEventPublisher",
+    "INotificationService",
     "IUserRepository",
     "RegisterUserCommand",
     "RegisterUserUseCase",
+    "UserRegisteredNotificationHandler",
 ]
