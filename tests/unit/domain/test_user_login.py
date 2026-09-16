@@ -1,7 +1,15 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import UserRegister
+from app.domain.exceptions import (
+    BlacklistedLoginError,
+    EmptyLoginError,
+    InvalidEmailFormatError,
+    InvalidLoginCharactersError,
+    InvalidPhoneFormatError,
+    LoginTooShortError,
+)
+from app.domain.user import User
 
 
 @pytest.mark.parametrize(
@@ -17,26 +25,29 @@ from app.schemas import UserRegister
     ],
 )
 def test_valid_login(login: str, valid_password: str) -> None:
-    user_login = UserRegister(
+    user = User(
         login=login,
         password=valid_password,
-        confirm_password=valid_password,
     )
 
-    assert user_login.model_dump() == {
+    assert user.model_dump() == {
         "login": login.strip(),
         "password": valid_password,
-        "confirm_password": valid_password,
     }
 
 
 def test_login_empty(valid_password: str) -> None:
-    with pytest.raises(ValidationError, match="Логин не может быть пустым"):
-        UserRegister(
+    with pytest.raises(
+        ValidationError, match="Логин не может быть пустым"
+    ) as exc_info:
+        User(
             login="",
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(err.get("ctx", {}).get("error"), EmptyLoginError)
+        for err in exc_info.value.errors()
+    )
 
 
 @pytest.mark.parametrize(
@@ -53,12 +64,15 @@ def test_login_empty(valid_password: str) -> None:
     ],
 )
 def test_login_blacklisted(login: str, valid_password: str) -> None:
-    with pytest.raises(ValidationError, match="Логин запрещен"):
-        UserRegister(
+    with pytest.raises(ValidationError, match="Логин запрещен") as exc_info:
+        User(
             login=login,
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(err.get("ctx", {}).get("error"), BlacklistedLoginError)
+        for err in exc_info.value.errors()
+    )
 
 
 @pytest.mark.parametrize(
@@ -70,12 +84,17 @@ def test_login_blacklisted(login: str, valid_password: str) -> None:
     ],
 )
 def test_login_invalid_email(login: str, valid_password: str) -> None:
-    with pytest.raises(ValidationError, match="Некорректный формат email"):
-        UserRegister(
+    with pytest.raises(
+        ValidationError, match="Некорректный формат email"
+    ) as exc_info:
+        User(
             login=login,
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(err.get("ctx", {}).get("error"), InvalidEmailFormatError)
+        for err in exc_info.value.errors()
+    )
 
 
 @pytest.mark.parametrize(
@@ -88,12 +107,15 @@ def test_login_invalid_email(login: str, valid_password: str) -> None:
 def test_login_invalid_phone(login: str, valid_password: str) -> None:
     with pytest.raises(
         ValidationError, match="Телефон должен соответствовать формату"
-    ):
-        UserRegister(
+    ) as exc_info:
+        User(
             login=login,
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(err.get("ctx", {}).get("error"), InvalidPhoneFormatError)
+        for err in exc_info.value.errors()
+    )
 
 
 @pytest.mark.parametrize(
@@ -108,12 +130,15 @@ def test_login_invalid_phone(login: str, valid_password: str) -> None:
 def test_login_too_short(login: str, valid_password: str) -> None:
     with pytest.raises(
         ValidationError, match="Логин должен содержать минимум 5 символов"
-    ):
-        UserRegister(
+    ) as exc_info:
+        User(
             login=login,
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(err.get("ctx", {}).get("error"), LoginTooShortError)
+        for err in exc_info.value.errors()
+    )
 
 
 @pytest.mark.parametrize(
@@ -130,9 +155,14 @@ def test_login_invalid_characters(login: str, valid_password: str) -> None:
     with pytest.raises(
         ValidationError,
         match="Логин может содержать только латинские буквы, цифры и _",
-    ):
-        UserRegister(
+    ) as exc_info:
+        User(
             login=login,
             password=valid_password,
-            confirm_password=valid_password,
         )
+    assert any(
+        isinstance(
+            err.get("ctx", {}).get("error"), InvalidLoginCharactersError
+        )
+        for err in exc_info.value.errors()
+    )

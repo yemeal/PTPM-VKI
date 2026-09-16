@@ -22,6 +22,18 @@ def test_register_success(
     assert response.text == "OK"
 
 
+def test_register_login_already_taken_conflict(
+    test_client: TestClient,
+    valid_payload: dict[str, str],
+) -> None:
+    first_resp = test_client.post("/v1/auth/register", json=valid_payload)
+    assert first_resp.status_code == status.HTTP_200_OK
+
+    second_resp = test_client.post("/v1/auth/register", json=valid_payload)
+    assert second_resp.status_code == status.HTTP_409_CONFLICT
+    assert second_resp.text == f"Логин '{valid_payload['login']}' уже занят"
+
+
 def test_register_invalid_data(
     test_client: TestClient,
     valid_payload: dict[str, str],
