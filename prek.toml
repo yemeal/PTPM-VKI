@@ -1,0 +1,116 @@
+# https://prek.j178.dev/
+
+# prek - это высокопроизводительный менеджер Git-хуков на Rust, совместимый
+# со спецификацией pre-commit, но поддерживающий нативный формат prek.toml,
+# встроенные Rust-хуки, кастомные приоритеты параллелизации и группировку.
+
+
+# ------------------------------------------------------------------------------
+# 1. Глобальные параметры жизненного цикла и версионирования
+# ------------------------------------------------------------------------------
+
+# Стадии Git, для которых 'prek install' регистрирует исполняемые shims в .git/hooks:
+# - pre-commit: быстрые проверки стиля, синтаксиса и безопасности (~1 сек).
+# - pre-push: более ресурсоемкие проверки (unit-тесты) перед отправкой в remote.
+default_install_hook_types = ["pre-commit", "pre-push"]
+
+# Минимально требуемая версия prek для воспроизводимости поведения в команде и CI
+minimum_prek_version = "0.5.3"
+
+
+
+
+# ------------------------------------------------------------------------------
+# 2. Модель приоритетов планировщика (Scheduler & Concurrency)
+# ------------------------------------------------------------------------------
+
+# В prek хуки упорядочиваются по возрастанию приоритета (меньшее число запускается раньше).
+
+# КРИТИЧЕСКИ ВАЖНО:
+# Хуки с ОДИНАКОВЫМ значением приоритета запускаются ПАРАЛЛЕЛЬНО (PREK_CONCURRENT_HOOKS).
+# Поэтому хуки-модификаторы (фиксеры) разнесены по монотонным приоритетам (fmt -> fix -> line-ends),
+# чтобы исключить race conditions (гонки) при одновременной записи в один и тот же файл.
+# Read-only анализаторы (lint) выполняются параллельно на приоритете 20 для максимальной скорости.
+[priorities]
+fmt = 0   # Автоформатирование кода
+fix = 5   # Тримминг пробелов и очистка содержимого
+line-ends = 10  # Нормализация окончаний файлов и строк (LF / EOF)
+lint = 20  # Read-only проверки синтаксиса, линтеры и безопасность (параллельно)
+typecheck = 30  # Статический анализ типов (ty)
+test = 40  # Автоматизированные тесты (pre-push)
+
+
+
+
+# ------------------------------------------------------------------------------
+# 3. Встроенные Rust-хуки (Builtin Hooks)
+# ------------------------------------------------------------------------------
+
+# Не требуют запуска Python-интерпретатора, внешних виртуальных окружений и сети.
+# Выполняются нативно на Rust за доли миллисекунд.
+[[repos]]
+repo = "builtin"
+hooks = [
+    # --- Фаза 1: Тримминг и очистка строк ---
+    # Удаляет хвостовые пробелы в строках.
+    # Аргумент --markdown-linebreak-ext=md сохраняет двойные пробелы в конце строк .md,
+    # которые по спецификации CommonMark задают жесткий перенос строки (<br/>).
+    { id = "trailing-whitespace", args = ["--markdown-linebreak-ext=md"], priority = "fix", groups = ["fix"] },
+    # --- Фаза 2: Окончания файлов и переводов строк ---
+    # Гарантирует наличие ровно одного завершающего перевода строки в конце файла.
+    { id = "end-of-file-fixer", priority = "line-ends", groups = ["fix"] },
+    # Защищает от смешанных окончаний строк (LF и CRLF в рамках одного файла).
+    # По умолчанию работает в режиме --fix=auto, заменяя на преобладающий тип окончаний,
+    # что предотвращает конфликты с core.autocrlf на Windows.
+    { id = "mixed-line-ending", priority = "line-ends", groups = ["fix"] },
+    # --- Фаза 3: Параллельные проверки синтаксиса конфигураций и безопасности ---
+    # Проверка синтаксиса YAML-документов (docker-compose, GitHub Actions workflows).
+    { id = "check-yaml", priority = "lint", groups = ["lint"] },
+    # Проверка синтаксиса TOML (pyproject.toml, prek.toml).
+    { id = "check-toml", priority = "lint", groups = ["lint"] },
+    # Проверка JSON-файлов (контракты, schemas, configs). Отклоняет дублирующиеся ключи.
+    { id = "check-json", priority = "lint", groups = ["lint"] },
+    # Обнаружение оставшихся маркеров конфликтов слияния (<<<<<<<, =======, >>>>>>>).
+    # Флаг --assume-in-merge ищет маркеры даже вне активного состояния merge/rebase.
+    { id = "check-merge-conflict", args = ["--assume-in-merge"], priority = "lint", groups = ["lint"] },
+    # Предотвращает добавление тяжелых бинарников, дампов и случайных артефактов (>500KB).
+    { id = "check-added-large-files", args = ["--maxkb=500"], priority = "lint", groups = ["lint"] },
+    # --- Фаза 4: Кроссплатформенная и репозиторная гигиена ---
+    # Проверка коллизий регистра имен файлов (актуально между Windows/macOS и Linux в CI).
+    { id = "check-case-conflict", priority = "lint", groups = ["lint"] },
+    # Проверка имен файлов, недопустимых в ОС Windows (CON, PRN, AUX, NUL, :, ?, * и т.д.).
+    { id = "check-illegal-windows-names", priority = "lint", groups = ["lint"] },
+    # Локальный поиск случайно добавленных приватных ключей (SSH, RSA, PGP, PEM-заголовки).
+    { id = "detect-private-key", priority = "lint", groups = ["security", "lint"] },
+    # Защита от случайного создания вложенных git-субмодулей внутри репозитория сервиса.
+    { id = "forbid-new-submodules", priority = "lint", groups = ["lint"] },
+    # Проверка, что shell-скрипты имеют валидный shebang (#!/bin/sh или #!/bin/bash).
+    { id = "check-executables-have-shebangs", priority = "lint", groups = ["lint"] },
+    # Проверка, что файлы с shebang имеют бит исполнения (+x) в Git-индексе (например, docker-entrypoint.sh).
+    { id = "check-shebang-scripts-are-executable", priority = "lint", groups = ["lint"] },
+]
+
+
+
+
+# ------------------------------------------------------------------------------
+# 4. Локальные проектные хуки (Local Hooks)
+# ------------------------------------------------------------------------------
+
+# Инструменты окружения сервиса, запускаемые через изолированный uv рантайм.
+[[repos]]
+repo = "local"
+hooks = [
+    # Контроль актуальности lock-файла: если pyproject.toml изменился без uv lock/sync,
+    # коммит прерывается до того, как несогласованность сломает шаг uv lock --check в CI.
+    { id = "uv-lock-check", name = "uv lock check", entry = "uv lock --check", language = "system", files = "^(pyproject\\.toml|uv\\.lock)$", pass_filenames = false, priority = "lint", groups = ["lint"] },
+    # Проверка форматирования Python-кода по стандартам Ruff.
+    { id = "ruff-format", name = "ruff format", entry = "uv run ruff format --check --force-exclude", language = "system", types = ["python"], priority = "lint", groups = ["lint"] },
+    # Статический анализ и проверка импортов Python-кода через Ruff linter.
+    { id = "ruff-check", name = "ruff check", entry = "uv run ruff check --force-exclude", language = "system", types = ["python"], priority = "lint", groups = ["lint"] },
+    # Проверка статической типизации рабочего кода сервиса через ty.
+    { id = "ty-check", name = "ty check", entry = "uv run ty check --error-on-warning", language = "system", pass_filenames = false, priority = "typecheck", groups = ["typecheck", "lint"] },
+    # Быстрые unit-тесты: выполняются автоматически только при выполнении 'git push',
+    # гарантируя, что ни один pull request не будет отправлен с регрессией доменной логики.
+    { id = "pytest-unit", name = "pytest unit tests", entry = "uv run pytest tests/unit -q", language = "system", pass_filenames = false, stages = ["pre-push"], priority = "test", groups = ["test"] },
+]
