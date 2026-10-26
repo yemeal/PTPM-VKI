@@ -1,10 +1,3 @@
-from app.entrypoints.http.exception_handlers import setup_exception_handlers
-from app.entrypoints.http.main import app, create_app
-from app.entrypoints.http.schemas import UserRegisterRequest
+from app.entrypoints.http.main import create_app
 
-__all__ = [
-    "UserRegisterRequest",
-    "app",
-    "create_app",
-    "setup_exception_handlers",
-]
+__all__ = ["create_app"]

@@ -1,71 +1,59 @@
 from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import PlainTextResponse
-from pydantic import ValidationError
+from fastapi.responses import JSONResponse
 
-from app.domain.exceptions import (
-    DomainValidationError,
-    LoginAlreadyTakenError,
+from app.domain.exceptions.base import DomainError
+from app.domain.exceptions.comments import (
+    CommentAlreadyExistsError,
+    CommentNotFoundError,
+    ConcurrencyError,
 )
+from app.infrastructure.exceptions import ForumFetchError
 
 
-def _extract_validation_message(
-    exc: RequestValidationError | ValidationError,
-) -> str:
-    errors = exc.errors()
-    if not errors:
-        return "Ошибка валидации данных"
+def register_exception_handlers(app: FastAPI) -> None:
+    """регистрация обработчиков исключений fastapi"""
 
-    first_err = errors[0]
-    original_exc = first_err.get("ctx", {}).get("error")
-    if original_exc is not None:
-        return str(original_exc)
+    @app.exception_handler(ForumFetchError)
+    async def forum_fetch_error_handler(
+        _request: Request, exc: ForumFetchError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": str(exc)},
+        )
 
-    msg = first_err.get("msg", "Ошибка валидации данных")
-    if msg.startswith("Value error, "):
-        return msg.removeprefix("Value error, ")
-    return msg
+    @app.exception_handler(CommentNotFoundError)
+    async def comment_not_found_handler(
+        _request: Request, exc: CommentNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc)},
+        )
 
+    @app.exception_handler(CommentAlreadyExistsError)
+    async def comment_already_exists_handler(
+        _request: Request, exc: CommentAlreadyExistsError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(exc)},
+        )
 
-async def validation_error_handler(
-    request: Request,
-    exc: RequestValidationError | ValidationError,
-) -> PlainTextResponse:
-    message = _extract_validation_message(exc)
-    request.state.error_message = message
-    return PlainTextResponse(
-        content=message,
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-    )
+    @app.exception_handler(ConcurrencyError)
+    async def concurrency_error_handler(
+        _request: Request, exc: ConcurrencyError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(exc)},
+        )
 
-
-async def domain_validation_error_handler(
-    request: Request,
-    exc: DomainValidationError,
-) -> PlainTextResponse:
-    request.state.error_message = exc.message
-    return PlainTextResponse(
-        content=exc.message,
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-    )
-
-
-async def login_already_taken_handler(
-    request: Request,
-    exc: LoginAlreadyTakenError,
-) -> PlainTextResponse:
-    request.state.error_message = exc.message
-    return PlainTextResponse(
-        content=exc.message,
-        status_code=status.HTTP_409_CONFLICT,
-    )
-
-
-def setup_exception_handlers(app: FastAPI) -> None:
-    """Регистрация обработчиков исключений в приложении FastAPI."""
-    app.exception_handler(RequestValidationError)(validation_error_handler)
-    app.exception_handler(ValidationError)(validation_error_handler)
-    app.exception_handler(DomainValidationError)(
-        domain_validation_error_handler
-    )
-    app.exception_handler(LoginAlreadyTakenError)(login_already_taken_handler)
+    @app.exception_handler(DomainError)
+    async def domain_error_handler(
+        _request: Request, exc: DomainError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": str(exc)},
+        )
