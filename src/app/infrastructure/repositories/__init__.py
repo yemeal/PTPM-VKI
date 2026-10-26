@@ -1,5 +1,5 @@
-from app.infrastructure.repositories.sqlite_user_repo import (
-    SqliteUserRepository,
+from app.infrastructure.repositories.sqlalchemy_comment_repo import (
+    SqlAlchemyCommentRepository,
 )
 
-__all__ = ["SqliteUserRepository"]
+__all__ = ["SqlAlchemyCommentRepository"]
