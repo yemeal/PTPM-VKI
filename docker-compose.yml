@@ -1,0 +1,29 @@
+services:
+  comments-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comments-service
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/comments.db
+      - LOG_LEVEL=INFO
+    volumes:
+      - comments_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  comments_data:
