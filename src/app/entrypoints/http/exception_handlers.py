@@ -54,6 +54,6 @@ def register_exception_handlers(app: FastAPI) -> None:
         _request: Request, exc: DomainError
     ) -> JSONResponse:
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"detail": str(exc)},
         )

@@ -17,7 +17,6 @@ dependencies = [
     "lxml>=6.1.3",
     "pydantic (>=2.13.5,<3.0.0)",
     "pydantic-settings>=2.16.1",
-    "requests>=2.34.2",
     "sqlalchemy>=2.1.6",
     "uvicorn[standard] (>=0.53.0,<0.54.0)",
 ]
@@ -29,7 +28,6 @@ dev = [
     "pytest-asyncio (>=1.4.0,<2.0.0)",
     "pytest-cov (>=7.1.0,<8.0.0)",
     "pip-audit (>=2.10.1,<3.0.0)",
-    "httpx2 (>=2.10.0,<3.0.0)",
     "ty (>=0.0.80,<0.0.81)",
     "prek (>=0.5.3,<0.6.0)",
 ]
@@ -67,10 +65,7 @@ asyncio_mode = "auto"
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 markers = [
     "integration: test that crosses an application or adapter boundary",
-]
-filterwarnings = [
-    # Игнорировать устаревший алиас AnyIO именно в Starlette TestClient:
-    "ignore:The anyio\\.abc\\.BlockingPortal alias is deprecated:DeprecationWarning:starlette\\.testclient",
+    "unit: isolated unit test for domain, application, or infrastructure",
 ]
 
 [tool.coverage.run]
