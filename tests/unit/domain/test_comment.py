@@ -52,6 +52,55 @@ def test_comment_create_with_none_external_id(now: datetime) -> None:
     assert comment.external_id is None
 
 
+def test_comment_create_with_string_external_ids(now: datetime) -> None:
+    c_numeric = Comment.create(
+        source_url="https://example.com/topic/1",
+        external_id="12345",
+        author="alice",
+        text="Numeric str id",
+        created_at=now,
+    )
+    assert c_numeric.external_id == 12345
+
+    c_alpha = Comment.create(
+        source_url="https://example.com/topic/1",
+        external_id="post_99xyz",
+        author="alice",
+        text="Alphanumeric str id",
+        created_at=now,
+    )
+    assert c_alpha.external_id == "post_99xyz"
+
+
+def test_comment_create_with_value_objects(now: datetime) -> None:
+    u = Username.from_str("alice_vo")
+    m = MessageText.from_str("Text from VO")
+    comment = Comment.create(
+        source_url="https://example.com/topic/1",
+        author=u,
+        text=m,
+        created_at=now,
+    )
+    assert comment.author == u
+    assert comment.text == m
+
+
+def test_comment_edit_text_with_message_text_vo(now: datetime) -> None:
+    comment = Comment.create(
+        source_url="https://example.com/topic/1",
+        author="alice",
+        text="Initial",
+        created_at=now,
+    )
+    new_vo = MessageText.from_str("Updated via VO")
+    later = now + timedelta(seconds=15)
+    changed = comment.edit_text(new_vo, now=later)
+
+    assert changed is True
+    assert comment.text == new_vo
+    assert comment.version == 2
+
+
 def test_comment_edit_text_success(now: datetime) -> None:
     comment = Comment.create(
         source_url="https://example.com/topic/1",

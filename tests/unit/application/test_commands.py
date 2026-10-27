@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import pytest
@@ -23,24 +24,13 @@ from app.application.dtos import CommentDTO
 from app.application.ports.comment_repository import (
     CommentRepositoryProtocol,
 )
+from app.application.ports.forum_parser import ForumParserProtocol
 from app.domain.aggregates.comment import Comment
 from app.domain.exceptions.comments import (
     CommentAlreadyExistsError,
     CommentNotFoundError,
     ConcurrencyError,
 )
-
-
-class FakeForumParser:
-    """фейк парсера страниц форума"""
-
-    def __init__(self, canned_comments: list[Comment] | None = None) -> None:
-        self.canned_comments = canned_comments or []
-
-    async def parse_page(
-        self, url: str, visited_urls: set[str] | None = None
-    ) -> list[Comment]:
-        return self.canned_comments
 
 
 async def test_add_comment_success(
@@ -69,6 +59,23 @@ async def test_add_comment_success(
     assert saved.id == comment.id
     assert saved.author.value == comment.author
     assert saved.text.value == comment.text
+
+
+async def test_add_comment_without_external_id(
+    repo: CommentRepositoryProtocol, now: datetime
+) -> None:
+    handler = AddCommentHandler(comments=repo, clock=lambda: now)
+    command = AddCommentCommand(
+        source_url="https://example.com/topic/1",
+        author="alice",
+        text="Comment without external id",
+    )
+    comment = await handler(command)
+
+    assert isinstance(comment, CommentDTO)
+    assert comment.external_id is None
+    assert comment.author == "alice"
+    assert comment.text == "Comment without external id"
 
 
 async def test_add_comment_already_exists_by_id(
@@ -233,7 +240,9 @@ async def test_delete_comment_not_found(
 
 
 async def test_parse_page_handler(
-    repo: CommentRepositoryProtocol, now: datetime
+    repo: CommentRepositoryProtocol,
+    now: datetime,
+    fake_parser_factory: Callable[[list[Comment] | None], ForumParserProtocol],
 ) -> None:
     later = now + timedelta(minutes=1)
     url = "https://example.com/topic/1"
@@ -262,7 +271,7 @@ async def test_parse_page_handler(
             created_at=now,
         ),
     ]
-    parser = FakeForumParser(canned_comments=canned)
+    parser = fake_parser_factory(canned)
     handler = ParsePageHandler(
         parser=parser, comments=repo, clock=lambda: later
     )

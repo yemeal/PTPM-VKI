@@ -1,13 +1,7 @@
 import uuid
-from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
 
 import pytest
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
 from app.application.pagination import PaginationParams
 from app.domain.aggregates.comment import Comment
@@ -15,30 +9,9 @@ from app.domain.exceptions.comments import (
     CommentAlreadyExistsError,
     ConcurrencyError,
 )
-from app.infrastructure.db.base import Base
 from app.infrastructure.repositories.sqlalchemy_comment_repo import (
     SqlAlchemyCommentRepository,
 )
-
-
-@pytest.fixture
-async def session() -> AsyncGenerator[AsyncSession]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    session_maker = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False
-    )
-    async with session_maker() as sess:
-        yield sess
-
-    await engine.dispose()
-
-
-@pytest.fixture
-def repo(session: AsyncSession) -> SqlAlchemyCommentRepository:
-    return SqlAlchemyCommentRepository(session=session)
 
 
 async def test_repo_add_and_get_by_id(
@@ -372,6 +345,79 @@ async def test_repo_get_paginated(
     )
     assert p_author.total == 3
     assert all(c.author.value == "alice" for c in p_author.items)
+
+    # 4. комбинированная фильтрация по автору и источнику
+    p_both = await repo.get_paginated(
+        pagination=PaginationParams(limit=10, offset=0),
+        author="alice",
+        source_url="https://forum.example.com/topic/1",
+    )
+    assert p_both.total == 3
+    assert len(p_both.items) == 3
+
+
+async def test_repo_get_by_source_url(
+    repo: SqlAlchemyCommentRepository, now: datetime
+) -> None:
+    url1 = "https://forum.example.com/topic/1"
+    url2 = "https://forum.example.com/topic/2"
+    c1 = Comment.create(
+        source_url=url1,
+        external_id=1,
+        author="alice",
+        text="T1",
+        created_at=now,
+    )
+    c2 = Comment.create(
+        source_url=url1,
+        external_id=2,
+        author="bob",
+        text="T2",
+        created_at=now + timedelta(seconds=1),
+    )
+    c3 = Comment.create(
+        source_url=url2,
+        external_id=3,
+        author="charlie",
+        text="T3",
+        created_at=now + timedelta(seconds=2),
+    )
+    await repo.add(c1)
+    await repo.add(c2)
+    await repo.add(c3)
+
+    results = await repo.get_by_source_url(url1)
+    assert len(results) == 2
+    assert [c.id for c in results] == [c1.id, c2.id]
+
+    empty = await repo.get_by_source_url("https://nonexistent.com")
+    assert empty == []
+
+
+async def test_repo_get_by_id_for_update(
+    repo: SqlAlchemyCommentRepository, now: datetime
+) -> None:
+    comment = Comment.create(
+        source_url="https://forum.example.com/topic/1",
+        external_id=1,
+        author="alice",
+        text="For update test",
+        created_at=now,
+    )
+    await repo.add(comment)
+
+    fetched = await repo.get_by_id(comment.id, for_update=True)
+    assert fetched is not None
+    assert fetched.id == comment.id
+
+
+async def test_repo_find_by_source_and_external_ids_empty(
+    repo: SqlAlchemyCommentRepository,
+) -> None:
+    res = await repo.find_by_source_and_external_ids(
+        "https://example.com/topic", []
+    )
+    assert res == {}
 
 
 def test_mapper_handles_integer_external_id(now: datetime) -> None:

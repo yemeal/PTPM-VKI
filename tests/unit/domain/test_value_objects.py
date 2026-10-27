@@ -20,11 +20,14 @@ def test_username_valid() -> None:
     assert u != "john_doe"
 
 
-def test_username_rejects_empty_or_whitespace() -> None:
+@pytest.mark.parametrize(
+    "invalid_input",
+    ["", "   ", "\t", "\n", " \t \n "],
+    ids=["empty", "spaces", "tab", "newline", "mixed_whitespace"],
+)
+def test_username_rejects_empty_or_whitespace(invalid_input: str) -> None:
     with pytest.raises(InvalidUsernameError):
-        Username.from_str("")
-    with pytest.raises(InvalidUsernameError):
-        Username.from_str("   ")
+        Username.from_str(invalid_input)
 
 
 def test_username_rejects_non_string() -> None:
@@ -61,11 +64,14 @@ def test_message_text_nfc_normalization() -> None:
     assert m.value == composed
 
 
-def test_message_text_rejects_empty_or_whitespace() -> None:
+@pytest.mark.parametrize(
+    "invalid_input",
+    ["", "   ", "\t", "\n\r", "   \n\r\t  "],
+    ids=["empty", "spaces", "tab", "crlf", "mixed_whitespace"],
+)
+def test_message_text_rejects_empty_or_whitespace(invalid_input: str) -> None:
     with pytest.raises(InvalidMessageTextError):
-        MessageText.from_str("")
-    with pytest.raises(InvalidMessageTextError):
-        MessageText.from_str("   \n\r\t  ")
+        MessageText.from_str(invalid_input)
 
 
 def test_message_text_rejects_non_string() -> None:

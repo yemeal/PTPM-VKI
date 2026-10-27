@@ -148,6 +148,18 @@ def test_mutable_entity_rejects_updated_at_preceding_created_at(
         entity._apply_changes(now=earlier, name="updated_name")
 
 
+def test_mutable_entity_rejects_updated_at_preceding_current_updated_at(
+    now: datetime,
+) -> None:
+    entity = DummyMutable(id=1, created_at=now)
+    later = now + timedelta(seconds=10)
+    entity._apply_changes(now=later, name="step_1")
+
+    earlier_than_later = now + timedelta(seconds=5)
+    with pytest.raises(InvalidDomainTimestampError):
+        entity._apply_changes(now=earlier_than_later, name="step_2")
+
+
 def test_versioned_mutable_entity_increments_version(now: datetime) -> None:
     entity = DummyVersioned(id=1, created_at=now)
     assert entity.version == 1

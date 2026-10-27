@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from pathlib import Path
 
 import httpx
 import pytest
@@ -9,12 +8,6 @@ from app.infrastructure.exceptions import ForumFetchError
 from app.infrastructure.parsers.soup_forum_parser import (
     BeautifulSoupForumParser,
 )
-
-
-@pytest.fixture
-def forum_html() -> str:
-    fixture_path = Path(__file__).parents[2] / "fixtures" / "forum_thread.html"
-    return fixture_path.read_text(encoding="utf-8")
 
 
 @pytest.fixture
@@ -111,16 +104,30 @@ def test_parse_html_empty_string(parser: BeautifulSoupForumParser) -> None:
     assert comments == []
 
 
-async def test_parse_page_raises_on_http_error(now: datetime) -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(404, text="Not Found")
-
-    transport = httpx.MockTransport(handler)
+@pytest.mark.parametrize(
+    ("http_status", "expected_status_code", "expected_upstream"),
+    [
+        (404, 400, 404),
+        (403, 400, 403),
+        (500, 400, 500),
+    ],
+)
+async def test_parse_page_raises_on_http_status_error(
+    http_status: int,
+    expected_status_code: int,
+    expected_upstream: int,
+    now: datetime,
+) -> None:
+    transport = httpx.MockTransport(
+        lambda _req: httpx.Response(http_status, text=f"Error {http_status}")
+    )
     async with httpx.AsyncClient(transport=transport) as client:
         parser = BeautifulSoupForumParser(client=client, clock=lambda: now)
         with pytest.raises(ForumFetchError) as exc_info:
-            await parser.parse_page("https://forum.example.com/not-found")
-        assert "HTTP status 404" in str(exc_info.value)
+            await parser.parse_page("https://forum.example.com/status")
+        assert f"HTTP status {http_status}" in str(exc_info.value)
+        assert exc_info.value.status_code == expected_status_code
+        assert exc_info.value.upstream_status_code == expected_upstream
 
 
 async def test_parse_page_raises_on_request_error(now: datetime) -> None:
@@ -133,6 +140,7 @@ async def test_parse_page_raises_on_request_error(now: datetime) -> None:
         with pytest.raises(ForumFetchError) as exc_info:
             await parser.parse_page("https://forum.example.com/unreachable")
         assert "Failed to fetch forum page" in str(exc_info.value)
+        assert exc_info.value.status_code == 502
 
 
 def test_parse_xml_rss_feed(parser: BeautifulSoupForumParser) -> None:
@@ -198,23 +206,6 @@ def test_parse_4pda_html_structure(parser: BeautifulSoupForumParser) -> None:
     assert comments[0].text.value == "Comment from 4PDA topic"
 
 
-async def test_parse_page_with_httpx_client(
-    forum_html: str, now: datetime
-) -> None:
-    transport = httpx.MockTransport(
-        lambda _req: httpx.Response(200, text=forum_html)
-    )
-    async with httpx.AsyncClient(transport=transport) as client:
-        parser = BeautifulSoupForumParser(client=client, clock=lambda: now)
-        comments = await parser.parse_page(
-            "https://forum.example.com/threads/123"
-        )
-
-    assert len(comments) == 3
-    assert comments[0].external_id == 101
-    assert comments[0].source_url == "https://forum.example.com/threads/123"
-
-
 async def test_parse_page_default_client(
     forum_html: str, now: datetime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -228,35 +219,6 @@ async def test_parse_page_default_client(
     parser = BeautifulSoupForumParser(client=None, clock=lambda: now)
     comments = await parser.parse_page("https://forum.example.com/topic/1")
     assert len(comments) == 3
-
-
-async def test_parse_page_raises_on_http_status_error_status_code(
-    now: datetime,
-) -> None:
-    transport = httpx.MockTransport(
-        lambda _req: httpx.Response(403, text="Forbidden")
-    )
-    async with httpx.AsyncClient(transport=transport) as client:
-        parser = BeautifulSoupForumParser(client=client, clock=lambda: now)
-        with pytest.raises(ForumFetchError) as exc_info:
-            await parser.parse_page("https://forum.example.com/blocked")
-        assert "HTTP status 403" in str(exc_info.value)
-        assert exc_info.value.status_code == 400
-
-
-async def test_parse_page_raises_on_request_error_status_code(
-    now: datetime,
-) -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("Connection refused")
-
-    transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport) as client:
-        parser = BeautifulSoupForumParser(client=client, clock=lambda: now)
-        with pytest.raises(ForumFetchError) as exc_info:
-            await parser.parse_page("https://forum.example.com/refused")
-        assert "Failed to fetch forum page" in str(exc_info.value)
-        assert exc_info.value.status_code == 502
 
 
 async def test_parse_page_follows_rss_auto_discovery(now: datetime) -> None:
@@ -484,20 +446,6 @@ def test_parse_html_ignores_sidebar_and_news_articles(
     assert comments[0].text.value == "Real discussion comment"
 
 
-async def test_forum_fetch_error_preserves_upstream_status_code(
-    now: datetime,
-) -> None:
-    transport = httpx.MockTransport(
-        lambda _req: httpx.Response(403, text="Forbidden")
-    )
-    async with httpx.AsyncClient(transport=transport) as client:
-        parser = BeautifulSoupForumParser(client=client, clock=lambda: now)
-        with pytest.raises(ForumFetchError) as exc_info:
-            await parser.parse_page("https://forum.example.com/blocked")
-        assert exc_info.value.status_code == 400
-        assert exc_info.value.upstream_status_code == 403
-
-
 async def test_parse_page_fallback_client_on_403(
     forum_html: str, now: datetime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -507,7 +455,7 @@ async def test_parse_page_fallback_client_on_403(
         self: httpx.AsyncClient, url: str, **_kwargs: object
     ) -> httpx.Response:
         req = httpx.Request("GET", url)
-        attempts.append({"verify": self._transport, "headers": self.headers})
+        attempts.append({"headers": self.headers.copy()})
         if len(attempts) == 1:
             return httpx.Response(
                 403, text="Forbidden by Cloudflare", request=req
